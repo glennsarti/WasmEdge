@@ -2,6 +2,7 @@
 #include <cstring>
 #include <vector>
 
+#include "wasm/wasm.h"
 #include "wasmedge/wasmedge.h"
 
 #include "common/errcode.h"
