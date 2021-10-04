@@ -72,7 +72,7 @@ Expect<void> FunctionSection::loadContent(FileMgr &Mgr, const Configure &) {
   } else {
     return logLoadError(Res.error(), Mgr.getLastOffset(), NodeAttr);
   }
-  for (uint32_t i = 0; i < VecCnt; ++i) {
+  for (uint32_t I = 0; I < VecCnt; ++I) {
     if (auto Res = Mgr.readU32()) {
       Content.push_back(*Res);
     } else {
@@ -157,11 +157,11 @@ Expect<void> DataCountSection::loadContent(FileMgr &Mgr, const Configure &) {
 
 namespace {
 
-inline constexpr uint32_t HostVersion() noexcept {
+inline constexpr uint32_t hostVersion() noexcept {
   return WasmEdge::AOT::kBinaryVersion;
 }
 
-inline constexpr uint8_t HostOSType() noexcept {
+inline constexpr uint8_t hostOSType() noexcept {
 #if WASMEDGE_OS_LINUX
   return UINT8_C(1);
 #elif WASMEDGE_OS_MACOS
@@ -171,7 +171,7 @@ inline constexpr uint8_t HostOSType() noexcept {
 #endif
 }
 
-inline constexpr uint8_t HostArchType() noexcept {
+inline constexpr uint8_t hostArchType() noexcept {
 #if defined(__x86_64__)
   return UINT8_C(1);
 #elif defined(__aarch64__)
@@ -188,7 +188,7 @@ Expect<void> AOTSection::loadBinary(FileMgr &Mgr, const Configure &) {
   } else {
     Version = *Res;
   }
-  if (Version != HostVersion()) {
+  if (Version != hostVersion()) {
     spdlog::error("AOT binary version unmatched.");
     return Unexpect(ErrCode::MalformedSection);
   }
@@ -199,7 +199,7 @@ Expect<void> AOTSection::loadBinary(FileMgr &Mgr, const Configure &) {
   } else {
     OSType = *Res;
   }
-  if (OSType != HostOSType()) {
+  if (OSType != hostOSType()) {
     spdlog::error("AOT OS type unmatched.");
     return Unexpect(ErrCode::MalformedSection);
   }
@@ -210,7 +210,7 @@ Expect<void> AOTSection::loadBinary(FileMgr &Mgr, const Configure &) {
   } else {
     ArchType = *Res;
   }
-  if (ArchType != HostArchType()) {
+  if (ArchType != hostArchType()) {
     spdlog::error("AOT arch type unmatched.");
     return Unexpect(ErrCode::MalformedSection);
   }

@@ -143,7 +143,7 @@ Expect<void> ElementSegment::loadBinary(FileMgr &Mgr, const Configure &Conf) {
     } else {
       return logLoadError(Res.error(), Mgr.getLastOffset(), NodeAttr);
     }
-    for (uint32_t i = 0; i < VecCnt; ++i) {
+    for (uint32_t I = 0; I < VecCnt; ++I) {
       /// For each element in vec(funcidx), make expr(ref.func idx end).
       InitExprs.emplace_back();
       Instruction RefFunc(OpCode::Ref__func);
@@ -186,7 +186,7 @@ Expect<void> ElementSegment::loadBinary(FileMgr &Mgr, const Configure &Conf) {
       VecCnt = *Res;
     }
     InitExprs.reserve(VecCnt);
-    for (uint32_t i = 0; i < VecCnt; ++i) {
+    for (uint32_t I = 0; I < VecCnt; ++I) {
       InitExprs.emplace_back();
       if (auto Res = InitExprs.back().loadBinary(Mgr, Conf)) {
         for (auto &Instr : InitExprs.back().getInstrs()) {
@@ -230,7 +230,7 @@ Expect<void> CodeSegment::loadBinary(FileMgr &Mgr, const Configure &Conf) {
     return logLoadError(Res.error(), Mgr.getLastOffset(), NodeAttr);
   }
   uint32_t TotalLocalCnt = 0;
-  for (uint32_t i = 0; i < VecCnt; ++i) {
+  for (uint32_t I = 0; I < VecCnt; ++I) {
     uint32_t LocalCnt = 0;
     ValType LocalType = ValType::None;
     if (auto Res = Mgr.readU32(); unlikely(!Res)) {

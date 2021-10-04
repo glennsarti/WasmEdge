@@ -61,7 +61,7 @@ Expect<void> Instruction::loadBinary(FileMgr &Mgr, const Configure &Conf) {
   /// Node: The instruction has checked for the proposals. Need to check their
   /// immediates.
 
-  auto readCheckZero = [&Mgr]() -> Expect<void> {
+  auto ReadCheckZero = [&Mgr]() -> Expect<void> {
     if (auto Res = Mgr.readByte(); unlikely(!Res)) {
       return logLoadError(Res.error(), Mgr.getLastOffset(),
                           ASTNodeAttr::Instruction);
@@ -74,7 +74,7 @@ Expect<void> Instruction::loadBinary(FileMgr &Mgr, const Configure &Conf) {
     return {};
   };
 
-  auto readU32 = [&Mgr](uint32_t &Dst) -> Expect<void> {
+  auto ReadU32 = [&Mgr](uint32_t &Dst) -> Expect<void> {
     if (auto Res = Mgr.readU32()) {
       Dst = *Res;
     } else {
@@ -124,38 +124,37 @@ Expect<void> Instruction::loadBinary(FileMgr &Mgr, const Configure &Conf) {
 
   case OpCode::Br:
   case OpCode::Br_if:
-    return readU32(TargetIdx);
+    return ReadU32(TargetIdx);
 
   case OpCode::Br_table: {
     uint32_t VecCnt = 0;
     /// Read the vector of labels.
-    if (auto Res = readU32(VecCnt); unlikely(!Res)) {
+    if (auto Res = ReadU32(VecCnt); unlikely(!Res)) {
       return Unexpect(Res);
     }
     LabelList.reserve(VecCnt);
     for (uint32_t I = 0; I < VecCnt; ++I) {
       uint32_t Label = 0;
-      if (auto Res = readU32(Label); unlikely(!Res)) {
+      if (auto Res = ReadU32(Label); unlikely(!Res)) {
         return Unexpect(Res);
-      } else {
-        LabelList.push_back(Label);
       }
+      LabelList.push_back(Label);
     }
     /// Read default label.
-    return readU32(TargetIdx);
+    return ReadU32(TargetIdx);
   }
 
   case OpCode::Call:
-    return readU32(TargetIdx);
+    return ReadU32(TargetIdx);
 
   case OpCode::Call_indirect: {
     /// Read the type index.
-    if (auto Res = readU32(TargetIdx); !Res) {
+    if (auto Res = ReadU32(TargetIdx); !Res) {
       return Unexpect(Res);
     }
     uint64_t SrcIdxOffset = Mgr.getOffset();
     /// Read the table index.
-    if (auto Res = readU32(SourceIdx); !Res) {
+    if (auto Res = ReadU32(SourceIdx); !Res) {
       return Unexpect(Res);
     }
     if ((SourceIdx > 0 || Mgr.getOffset() - SrcIdxOffset > 1) &&
@@ -185,7 +184,7 @@ Expect<void> Instruction::loadBinary(FileMgr &Mgr, const Configure &Conf) {
   case OpCode::Ref__is_null:
     return {};
   case OpCode::Ref__func:
-    return readU32(TargetIdx);
+    return ReadU32(TargetIdx);
 
   /// Parametric Instructions.
   case OpCode::Drop:
@@ -194,7 +193,7 @@ Expect<void> Instruction::loadBinary(FileMgr &Mgr, const Configure &Conf) {
   case OpCode::Select_t: {
     /// Read the vector of value types.
     uint32_t VecCnt;
-    if (auto Res = readU32(VecCnt); unlikely(!Res)) {
+    if (auto Res = ReadU32(VecCnt); unlikely(!Res)) {
       return Unexpect(Res);
     }
     ValTypeList.reserve(VecCnt);
@@ -222,7 +221,7 @@ Expect<void> Instruction::loadBinary(FileMgr &Mgr, const Configure &Conf) {
   case OpCode::Local__tee:
   case OpCode::Global__get:
   case OpCode::Global__set:
-    return readU32(TargetIdx);
+    return ReadU32(TargetIdx);
 
   /// Table Instructions.
   case OpCode::Table__get:
@@ -231,20 +230,20 @@ Expect<void> Instruction::loadBinary(FileMgr &Mgr, const Configure &Conf) {
   case OpCode::Table__grow:
   case OpCode::Table__size:
   case OpCode::Table__fill:
-    if (auto Res = readU32(TargetIdx); unlikely(!Res)) {
+    if (auto Res = ReadU32(TargetIdx); unlikely(!Res)) {
       return Unexpect(Res);
     }
     if (Code == OpCode::Table__copy) {
-      return readU32(SourceIdx);
+      return ReadU32(SourceIdx);
     }
     return {};
   case OpCode::Table__init:
-    if (auto Res = readU32(SourceIdx); unlikely(!Res)) {
+    if (auto Res = ReadU32(SourceIdx); unlikely(!Res)) {
       return Unexpect(Res);
     }
     [[fallthrough]];
   case OpCode::Elem__drop:
-    return readU32(TargetIdx);
+    return ReadU32(TargetIdx);
 
   /// Memory Instructions.
   case OpCode::I32__load:
@@ -271,35 +270,35 @@ Expect<void> Instruction::loadBinary(FileMgr &Mgr, const Configure &Conf) {
   case OpCode::I64__store16:
   case OpCode::I64__store32:
     /// Read memory arguments.
-    if (auto Res = readU32(MemAlign); unlikely(!Res)) {
+    if (auto Res = ReadU32(MemAlign); unlikely(!Res)) {
       return Unexpect(Res);
     }
-    return readU32(MemOffset);
+    return ReadU32(MemOffset);
 
   case OpCode::Memory__copy:
-    if (auto Res = readCheckZero(); unlikely(!Res)) {
+    if (auto Res = ReadCheckZero(); unlikely(!Res)) {
       return Unexpect(Res);
     }
     [[fallthrough]];
   case OpCode::Memory__grow:
   case OpCode::Memory__size:
   case OpCode::Memory__fill:
-    return readCheckZero();
+    return ReadCheckZero();
   case OpCode::Memory__init:
     if (!Conf.getRuntimeConfigure().hasDataCountSection()) {
       return logLoadError(ErrCode::DataCountRequired, Offset,
                           ASTNodeAttr::Instruction);
     }
-    if (auto Res = readU32(SourceIdx); !Res) {
+    if (auto Res = ReadU32(SourceIdx); !Res) {
       return Unexpect(Res);
     }
-    return readCheckZero();
+    return ReadCheckZero();
   case OpCode::Data__drop:
     if (!Conf.getRuntimeConfigure().hasDataCountSection()) {
       return logLoadError(ErrCode::DataCountRequired, Offset,
                           ASTNodeAttr::Instruction);
     }
-    return readU32(TargetIdx);
+    return ReadU32(TargetIdx);
 
   /// Const Instructions.
   case OpCode::I32__const:
@@ -493,10 +492,10 @@ Expect<void> Instruction::loadBinary(FileMgr &Mgr, const Configure &Conf) {
   case OpCode::V128__load64_zero:
   case OpCode::V128__store:
     /// Read memory arguments.
-    if (auto Res = readU32(MemAlign); unlikely(!Res)) {
+    if (auto Res = ReadU32(MemAlign); unlikely(!Res)) {
       return Unexpect(Res);
     }
-    if (auto Res = readU32(MemOffset); unlikely(!Res)) {
+    if (auto Res = ReadU32(MemOffset); unlikely(!Res)) {
       return logLoadError(Res.error(), Mgr.getLastOffset(),
                           ASTNodeAttr::Instruction);
     }
@@ -510,11 +509,11 @@ Expect<void> Instruction::loadBinary(FileMgr &Mgr, const Configure &Conf) {
   case OpCode::V128__store32_lane:
   case OpCode::V128__store64_lane:
     /// Read memory arguments.
-    if (auto Res = readU32(MemAlign); unlikely(!Res)) {
+    if (auto Res = ReadU32(MemAlign); unlikely(!Res)) {
       return logLoadError(Res.error(), Mgr.getLastOffset(),
                           ASTNodeAttr::Instruction);
     }
-    if (auto Res = readU32(MemOffset); unlikely(!Res)) {
+    if (auto Res = ReadU32(MemOffset); unlikely(!Res)) {
       return logLoadError(Res.error(), Mgr.getLastOffset(),
                           ASTNodeAttr::Instruction);
     }

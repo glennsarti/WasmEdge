@@ -45,9 +45,8 @@ Expect<void> Module::loadBinary(FileMgr &Mgr, const Configure &Conf) {
     } else {
       if (Res.error() == ErrCode::UnexpectedEnd) {
         break;
-      } else {
-        return logLoadError(Res.error(), Mgr.getLastOffset(), NodeAttr);
       }
+      return logLoadError(Res.error(), Mgr.getLastOffset(), NodeAttr);
     }
 
     /// Sections except the custom section should be unique.

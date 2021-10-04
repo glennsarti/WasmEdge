@@ -66,7 +66,7 @@ Expect<void> FunctionType::loadBinary(FileMgr &Mgr, const Configure &Conf) {
   } else {
     return logLoadError(Res.error(), Mgr.getLastOffset(), NodeAttr);
   }
-  for (uint32_t i = 0; i < VecCnt; ++i) {
+  for (uint32_t I = 0; I < VecCnt; ++I) {
     if (auto Res = Mgr.readByte()) {
       ValType Type = static_cast<ValType>(*Res);
       if (auto Check =
@@ -91,7 +91,7 @@ Expect<void> FunctionType::loadBinary(FileMgr &Mgr, const Configure &Conf) {
     return logNeedProposal(ErrCode::MalformedValType, Proposal::MultiValue,
                            Mgr.getLastOffset(), NodeAttr);
   }
-  for (uint32_t i = 0; i < VecCnt; ++i) {
+  for (uint32_t I = 0; I < VecCnt; ++I) {
     if (auto Res = Mgr.readByte()) {
       ValType Type = static_cast<ValType>(*Res);
       if (auto Check =
