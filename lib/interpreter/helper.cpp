@@ -67,7 +67,9 @@ Interpreter::enterFunction(Runtime::StoreManager &StoreMgr,
 
     /// For host function case, the continuation will be the next.
     return From;
-  } else if (Func.isCompiledFunction()) {
+  }
+
+  if (Func.isCompiledFunction()) {
     auto Wrapper = Func.getFuncType().getSymbol();
     /// Compiled function case: Push frame with locals and args.
     const auto ArgsN = static_cast<uint32_t>(FuncType.Params.size());
@@ -108,29 +110,28 @@ Interpreter::enterFunction(Runtime::StoreManager &StoreMgr,
     StackMgr.popFrame();
     /// For compiled function case, the continuation will be the next.
     return From;
-  } else {
-    const auto ArgsN = static_cast<uint32_t>(FuncType.Params.size());
-    const auto RetsN = static_cast<uint32_t>(FuncType.Returns.size());
-    /// Native function case: Push frame with locals and args.
-    StackMgr.pushFrame(Func.getModuleAddr(), /// Module address
-                       ArgsN,                /// Arguments num
-                       RetsN                 /// Returns num
-    );
-
-    /// Push local variables to stack.
-    for (auto &Def : Func.getLocals()) {
-      for (uint32_t i = 0; i < Def.first; i++) {
-        StackMgr.push(ValueFromType(Def.second));
-      }
-    }
-
-    /// Enter function block []->[returns] with label{none}.
-    StackMgr.pushLabel(0, static_cast<uint32_t>(FuncType.Returns.size()),
-                       From - 1);
-    /// For native function case, the continuation will be the start of
-    /// function body.
-    return Func.getInstrs().begin();
   }
+  const auto ArgsN = static_cast<uint32_t>(FuncType.Params.size());
+  const auto RetsN = static_cast<uint32_t>(FuncType.Returns.size());
+  /// Native function case: Push frame with locals and args.
+  StackMgr.pushFrame(Func.getModuleAddr(), /// Module address
+                     ArgsN,                /// Arguments num
+                     RetsN                 /// Returns num
+  );
+
+  /// Push local variables to stack.
+  for (auto &Def : Func.getLocals()) {
+    for (uint32_t I = 0; I < Def.first; I++) {
+      StackMgr.push(ValueFromType(Def.second));
+    }
+  }
+
+  /// Enter function block []->[returns] with label{none}.
+  StackMgr.pushLabel(0, static_cast<uint32_t>(FuncType.Returns.size()),
+                     From - 1);
+  /// For native function case, the continuation will be the start of
+  /// function body.
+  return Func.getInstrs().begin();
 }
 
 std::pair<uint32_t, uint32_t>
@@ -188,9 +189,8 @@ Interpreter::getTabInstByIdx(Runtime::StoreManager &StoreMgr,
   }
   if (auto Res = StoreMgr.getTable(TabAddr)) {
     return *Res;
-  } else {
-    return nullptr;
   }
+  return nullptr;
 }
 
 Runtime::Instance::MemoryInstance *
@@ -209,9 +209,8 @@ Interpreter::getMemInstByIdx(Runtime::StoreManager &StoreMgr,
   }
   if (auto Res = StoreMgr.getMemory(MemAddr)) {
     return *Res;
-  } else {
-    return nullptr;
   }
+  return nullptr;
 }
 
 Runtime::Instance::GlobalInstance *
@@ -230,9 +229,8 @@ Interpreter::getGlobInstByIdx(Runtime::StoreManager &StoreMgr,
   }
   if (auto Res = StoreMgr.getGlobal(GlobAddr)) {
     return *Res;
-  } else {
-    return nullptr;
   }
+  return nullptr;
 }
 
 Runtime::Instance::ElementInstance *
@@ -251,9 +249,8 @@ Interpreter::getElemInstByIdx(Runtime::StoreManager &StoreMgr,
   }
   if (auto Res = StoreMgr.getElement(ElemAddr)) {
     return *Res;
-  } else {
-    return nullptr;
   }
+  return nullptr;
 }
 
 Runtime::Instance::DataInstance *
@@ -272,9 +269,8 @@ Interpreter::getDataInstByIdx(Runtime::StoreManager &StoreMgr,
   }
   if (auto Res = StoreMgr.getData(DataAddr)) {
     return *Res;
-  } else {
-    return nullptr;
   }
+  return nullptr;
 }
 
 } // namespace Interpreter
