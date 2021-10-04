@@ -5,10 +5,9 @@
 #include "common/log.h"
 #include "runtime/instance/memory.h"
 #include "runtime/instance/table.h"
-#include <charconv>
-#include <cinttypes>
-#include <cstdlib>
+
 #include <lld/Common/Driver.h>
+
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -23,6 +22,10 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+
+#include <charconv>
+#include <cinttypes>
+#include <cstdlib>
 #include <numeric>
 
 #if LLVM_VERSION_MAJOR >= 12
@@ -111,20 +114,20 @@ static llvm::Value *createLikely(llvm::IRBuilder<> &Builder,
                                  llvm::Value *Value);
 class FunctionCompiler;
 
-template <typename... Ts> struct overloaded : Ts... {
+template <typename... Ts> struct Overloaded : Ts... {
   using Ts::operator()...;
 };
-template <typename... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+template <typename... Ts> Overloaded(Ts...) -> Overloaded<Ts...>;
 
 /// XXX: Misalignment handler not implemented yet, forcing unalignment
 /// force unalignment load/store
-static inline constexpr const bool kForceUnalignment = true;
+static inline constexpr const bool KForceUnalignment = true;
 
 /// force checking div/rem on zero
-static inline constexpr const bool kForceDivCheck = true;
+static inline constexpr const bool KForceDivCheck = true;
 
 /// Size of a ValVariant
-static inline constexpr const uint32_t kValSize = sizeof(WasmEdge::ValVariant);
+static inline constexpr const uint32_t KValSize = sizeof(WasmEdge::ValVariant);
 
 /// Translate Compiler::OptimizationLevel to llvm::PassBuilder version
 static inline llvm::PassBuilder::OptimizationLevel
@@ -149,39 +152,39 @@ toLLVMLevel(WasmEdge::CompilerConfigure::OptimizationLevel Level) {
   }
 }
 
-WasmEdge::Expect<void> WriteByte(llvm::raw_ostream &OS, uint8_t Data) {
+WasmEdge::Expect<void> writeByte(llvm::raw_ostream &OS, uint8_t Data) {
   OS.write(Data);
   return {};
 };
 
-WasmEdge::Expect<void> WriteU32(llvm::raw_ostream &OS, uint32_t Data) {
+WasmEdge::Expect<void> writeU32(llvm::raw_ostream &OS, uint32_t Data) {
   do {
     uint8_t Byte = static_cast<uint8_t>(Data & UINT32_C(0x7f));
     Data >>= 7;
     if (Data > UINT32_C(0)) {
       Byte |= UINT8_C(0x80);
     }
-    WriteByte(OS, Byte);
+    writeByte(OS, Byte);
   } while (Data > UINT32_C(0));
   return {};
 };
 
-WasmEdge::Expect<void> WriteU64(llvm::raw_ostream &OS, uint64_t Data) {
+WasmEdge::Expect<void> writeU64(llvm::raw_ostream &OS, uint64_t Data) {
   do {
     uint8_t Byte = static_cast<uint8_t>(Data & UINT64_C(0x7f));
     Data >>= 7;
     if (Data > UINT64_C(0)) {
       Byte |= UINT8_C(0x80);
     }
-    WriteByte(OS, Byte);
+    writeByte(OS, Byte);
   } while (Data > UINT64_C(0));
   return {};
 };
 
-WasmEdge::Expect<void> WriteName(llvm::raw_ostream &OS, std::string_view Data) {
-  WriteU32(OS, Data.size());
+WasmEdge::Expect<void> writeName(llvm::raw_ostream &OS, std::string_view Data) {
+  writeU32(OS, Data.size());
   for (const auto C : Data) {
-    WriteByte(OS, C);
+    writeByte(OS, C);
   }
   return {};
 };
@@ -228,9 +231,9 @@ struct WasmEdge::AOT::Compiler::CompileContext {
 #endif
 
 #if defined(__SSE4_1__)
-  bool SupportSSE4_1 = true;
+  bool SupportSSE4_1 = true; // NOLINT(readability-identifier-naming)
 #else
-  bool SupportSSE4_1 = false;
+  bool SupportSSE4_1 = false; // NOLINT(readability-identifier-naming)
 #endif
 
 #if defined(__SSSE3__)
@@ -395,7 +398,7 @@ struct WasmEdge::AOT::Compiler::CompileContext {
   resolveBlockType(const BlockType &Type) const {
     using VecT = std::vector<ValType>;
     using RetT = std::pair<VecT, VecT>;
-    return std::visit(overloaded{[](const ValType &VType) -> RetT {
+    return std::visit(Overloaded{[](const ValType &VType) -> RetT {
                                    if (VType == ValType::None) {
                                      return RetT{};
                                    }
@@ -479,7 +482,7 @@ static llvm::Type *toLLVMRetsType(llvm::LLVMContext &LLContext,
 static llvm::FunctionType *toLLVMType(llvm::PointerType *ExecCtxPtrTy,
                                       const AST::FunctionType &FuncType) {
   auto ArgsTy = toLLVMArgsType(ExecCtxPtrTy, FuncType.getParamTypes());
-  auto RetTy =
+  auto *RetTy =
       toLLVMRetsType(ExecCtxPtrTy->getContext(), FuncType.getReturnTypes());
   return llvm::FunctionType::get(RetTy, ArgsTy, false);
 }
@@ -1121,16 +1124,16 @@ public:
 
 #if defined(__x86_64__)
         if (Context.SupportSSE4_1) {
-          const uint64_t kZero = 0;
+          const uint64_t KZero = 0;
           auto *VectorTy =
               llvm::VectorType::get(Value->getType(), VectorSize, false);
           llvm::Value *Ret = llvm::UndefValue::get(VectorTy);
-          Ret = Builder.CreateInsertElement(Ret, Value, kZero);
+          Ret = Builder.CreateInsertElement(Ret, Value, KZero);
           auto ID = IsFloat ? llvm::Intrinsic::x86_sse41_round_ss
                             : llvm::Intrinsic::x86_sse41_round_sd;
           Ret =
               Builder.CreateIntrinsic(ID, {}, {Ret, Ret, Builder.getInt32(8)});
-          Ret = Builder.CreateExtractElement(Ret, kZero);
+          Ret = Builder.CreateExtractElement(Ret, KZero);
           stackPush(Ret);
           break;
         }
@@ -1138,14 +1141,14 @@ public:
 
 #if defined(__aarch64__)
         if (Context.SupportNEON) {
-          const uint64_t kZero = 0;
+          const uint64_t KZero = 0;
           auto *VectorTy =
               llvm::VectorType::get(Value->getType(), VectorSize, false);
           llvm::Value *Ret = llvm::UndefValue::get(VectorTy);
-          Ret = Builder.CreateInsertElement(Ret, Value, kZero);
+          Ret = Builder.CreateInsertElement(Ret, Value, KZero);
           Ret = Builder.CreateUnaryIntrinsic(
               llvm::Intrinsic::aarch64_neon_frintn, Ret);
-          Ret = Builder.CreateExtractElement(Ret, kZero);
+          Ret = Builder.CreateExtractElement(Ret, KZero);
           stackPush(Ret);
           break;
         }
@@ -1444,7 +1447,7 @@ public:
       case OpCode::I64__div_s: {
         llvm::Value *RHS = stackPop();
         llvm::Value *LHS = stackPop();
-        if constexpr (kForceDivCheck) {
+        if constexpr (KForceDivCheck) {
           const bool Is32 = Instr.getOpCode() == OpCode::I32__div_s;
           llvm::ConstantInt *IntZero =
               Is32 ? Builder.getInt32(0) : Builder.getInt64(0);
@@ -1482,7 +1485,7 @@ public:
       case OpCode::I64__div_u: {
         llvm::Value *RHS = stackPop();
         llvm::Value *LHS = stackPop();
-        if constexpr (kForceDivCheck) {
+        if constexpr (KForceDivCheck) {
           const bool Is32 = Instr.getOpCode() == OpCode::I32__div_u;
           llvm::ConstantInt *IntZero =
               Is32 ? Builder.getInt32(0) : Builder.getInt64(0);
@@ -1518,7 +1521,7 @@ public:
             llvm::BasicBlock::Create(LLContext, "no.overflow", F);
         auto *EndBB = llvm::BasicBlock::Create(LLContext, "end.overflow", F);
 
-        if constexpr (kForceDivCheck) {
+        if constexpr (KForceDivCheck) {
           auto *OkBB = llvm::BasicBlock::Create(LLContext, "rem.ok", F);
 
           auto *IsNotZero =
@@ -1551,7 +1554,7 @@ public:
       case OpCode::I64__rem_u: {
         llvm::Value *RHS = stackPop();
         llvm::Value *LHS = stackPop();
-        if constexpr (kForceDivCheck) {
+        if constexpr (KForceDivCheck) {
           llvm::ConstantInt *IntZero = Instr.getOpCode() == OpCode::I32__rem_u
                                            ? Builder.getInt32(0)
                                            : Builder.getInt64(0);
@@ -2895,8 +2898,8 @@ private:
       Args = llvm::ConstantPointerNull::get(Builder.getInt8PtrTy());
     } else {
       auto *Alloca = Builder.CreateAlloca(Builder.getInt8Ty(),
-                                          Builder.getInt64(ArgSize * kValSize));
-      Alloca->setAlignment(Align(kValSize));
+                                          Builder.getInt64(ArgSize * KValSize));
+      Alloca->setAlignment(Align(KValSize));
       Args = Alloca;
     }
 
@@ -2905,15 +2908,15 @@ private:
       Rets = llvm::ConstantPointerNull::get(Builder.getInt8PtrTy());
     } else {
       auto *Alloca = Builder.CreateAlloca(Builder.getInt8Ty(),
-                                          Builder.getInt64(RetSize * kValSize));
-      Alloca->setAlignment(Align(kValSize));
+                                          Builder.getInt64(RetSize * KValSize));
+      Alloca->setAlignment(Align(KValSize));
       Rets = Alloca;
     }
 
     for (size_t I = 0; I < ArgSize; ++I) {
       const size_t J = ArgSize - 1 - I;
       auto *Arg = stackPop();
-      auto *Ptr = Builder.CreateConstInBoundsGEP1_64(Args, J * kValSize);
+      auto *Ptr = Builder.CreateConstInBoundsGEP1_64(Args, J * KValSize);
       Builder.CreateStore(
           Arg, Builder.CreateBitCast(Ptr, Arg->getType()->getPointerTo()));
     }
@@ -2937,7 +2940,7 @@ private:
       stackPush(Builder.CreateLoad(Ptr));
     } else {
       for (unsigned I = 0; I < RetSize; ++I) {
-        auto *VPtr = Builder.CreateConstInBoundsGEP1_64(Rets, I * kValSize);
+        auto *VPtr = Builder.CreateConstInBoundsGEP1_64(Rets, I * KValSize);
         auto *Ptr = Builder.CreateBitCast(
             VPtr, RTy->getStructElementType(I)->getPointerTo());
         stackPush(Builder.CreateLoad(Ptr));
@@ -2948,7 +2951,7 @@ private:
   }
 
   void compileLoadOp(unsigned Offset, unsigned Alignment, llvm::Type *LoadTy) {
-    if constexpr (kForceUnalignment) {
+    if constexpr (KForceUnalignment) {
       Alignment = 0;
     }
     auto *Off = Builder.CreateZExt(stackPop(), Context.Int64Ty);
@@ -3007,7 +3010,7 @@ private:
   }
   void compileStoreOp(unsigned Offset, unsigned Alignment, llvm::Type *LoadTy,
                       bool Trunc = false, bool BitCast = false) {
-    if constexpr (kForceUnalignment) {
+    if constexpr (KForceUnalignment) {
       Alignment = 0;
     }
     auto *V = stackPop();
@@ -3372,26 +3375,24 @@ private:
               return Builder.CreateIntrinsic(
                   llvm::Intrinsic::x86_ssse3_pmadd_ub_sw_128, {},
                   {Builder.CreateVectorSplat(16, Builder.getInt8(1)), V});
-            } else {
-              return Builder.CreateIntrinsic(
-                  llvm::Intrinsic::x86_ssse3_pmadd_ub_sw_128, {},
-                  {V, Builder.CreateVectorSplat(16, Builder.getInt8(1))});
             }
+            return Builder.CreateIntrinsic(
+                llvm::Intrinsic::x86_ssse3_pmadd_ub_sw_128, {},
+                {V, Builder.CreateVectorSplat(16, Builder.getInt8(1))});
           }
           if (Context.SupportSSE2 && Count == 8) {
             if (Signed) {
               return Builder.CreateIntrinsic(
                   llvm::Intrinsic::x86_sse2_pmadd_wd, {},
                   {V, Builder.CreateVectorSplat(8, Builder.getInt16(1))});
-            } else {
-              V = Builder.CreateXor(
-                  V, Builder.CreateVectorSplat(8, Builder.getInt16(0x8000)));
-              V = Builder.CreateIntrinsic(
-                  llvm::Intrinsic::x86_sse2_pmadd_wd, {},
-                  {V, Builder.CreateVectorSplat(8, Builder.getInt16(1))});
-              return Builder.CreateAdd(
-                  V, Builder.CreateVectorSplat(4, Builder.getInt32(0x10000)));
             }
+            V = Builder.CreateXor(
+                V, Builder.CreateVectorSplat(8, Builder.getInt16(0x8000)));
+            V = Builder.CreateIntrinsic(
+                llvm::Intrinsic::x86_sse2_pmadd_wd, {},
+                {V, Builder.CreateVectorSplat(8, Builder.getInt16(1))});
+            return Builder.CreateAdd(
+                V, Builder.CreateVectorSplat(4, Builder.getInt32(0x10000)));
           }
 #endif
 
@@ -3951,21 +3952,21 @@ Expect<void> outputWasmLibrary(const std::filesystem::path &OutputPath,
   {
     llvm::raw_svector_ostream OS(OSCustomSecVec);
 
-    WriteName(OS, "wasmedge"sv);
-    WriteU32(OS, WasmEdge::AOT::kBinaryVersion);
+    writeName(OS, "wasmedge"sv);
+    writeU32(OS, WasmEdge::AOT::kBinaryVersion);
 
 #if WASMEDGE_OS_LINUX
-    WriteByte(OS, UINT8_C(1));
+    writeByte(OS, UINT8_C(1));
 #elif WASMEDGE_OS_MACOS
-    WriteByte(OS, UINT8_C(2));
+    writeByte(OS, UINT8_C(2));
 #elif WASMEDGE_OS_WINDOWS
-    WriteByte(OS, UINT8_C(3));
+    writeByte(OS, UINT8_C(3));
 #endif
 
 #if defined(__x86_64__)
-    WriteByte(OS, UINT8_C(1));
+    writeByte(OS, UINT8_C(1));
 #elif defined(__aarch64__)
-    WriteByte(OS, UINT8_C(2));
+    writeByte(OS, UINT8_C(2));
 #endif
 
     uint64_t VersionAddress = 0, IntrinsicsAddress = 0;
@@ -4014,15 +4015,15 @@ Expect<void> outputWasmLibrary(const std::filesystem::path &OutputPath,
     if (CodesMin != std::numeric_limits<uint64_t>::max()) {
       Codes.erase(Codes.begin(), Codes.begin() + CodesMin);
     }
-    WriteU64(OS, VersionAddress);
-    WriteU64(OS, IntrinsicsAddress);
-    WriteU64(OS, Types.size());
+    writeU64(OS, VersionAddress);
+    writeU64(OS, IntrinsicsAddress);
+    writeU64(OS, Types.size());
     for (const uint64_t TypeAddress : Types) {
-      WriteU64(OS, TypeAddress);
+      writeU64(OS, TypeAddress);
     }
-    WriteU64(OS, Codes.size());
+    writeU64(OS, Codes.size());
     for (const uint64_t CodeAddress : Codes) {
-      WriteU64(OS, CodeAddress);
+      writeU64(OS, CodeAddress);
     }
 
     uint32_t SectionCount = 0;
@@ -4035,7 +4036,7 @@ Expect<void> outputWasmLibrary(const std::filesystem::path &OutputPath,
       }
       ++SectionCount;
     }
-    WriteU32(OS, SectionCount);
+    writeU32(OS, SectionCount);
 
     for (auto &Section : ObjFile->sections()) {
       const uint64_t Address = Section.getAddress();
@@ -4047,17 +4048,17 @@ Expect<void> outputWasmLibrary(const std::filesystem::path &OutputPath,
         Content.assign(Res->begin(), Res->end());
       }
       if (Section.isText()) {
-        WriteByte(OS, UINT8_C(1));
+        writeByte(OS, UINT8_C(1));
       } else if (Section.isData()) {
-        WriteByte(OS, UINT8_C(2));
+        writeByte(OS, UINT8_C(2));
       } else if (Section.isBSS()) {
-        WriteByte(OS, UINT8_C(3));
+        writeByte(OS, UINT8_C(3));
       } else {
         continue;
       }
-      WriteU64(OS, Address);
-      WriteU64(OS, Size);
-      WriteName(OS, std::string_view(Content.data(), Content.size()));
+      writeU64(OS, Address);
+      writeU64(OS, Size);
+      writeName(OS, std::string_view(Content.data(), Content.size()));
     }
   }
 
@@ -4071,8 +4072,8 @@ Expect<void> outputWasmLibrary(const std::filesystem::path &OutputPath,
   }
   OS.write(reinterpret_cast<const char *>(Data.data()), Data.size());
   /// Custom section id
-  WriteByte(OS, UINT8_C(0x00));
-  WriteName(OS, std::string_view(OSCustomSecVec.data(), OSCustomSecVec.size()));
+  writeByte(OS, UINT8_C(0x00));
+  writeName(OS, std::string_view(OSCustomSecVec.data(), OSCustomSecVec.size()));
 
   llvm::sys::fs::remove(SharedObjectName);
   return {};
@@ -4176,7 +4177,7 @@ Expect<void> Compiler::compile(Span<const Byte> Data, const AST::Module &Module,
         llvm::TargetRegistry::lookupTarget(Triple.getTriple(), Error);
     if (!TheTarget) {
       // TODO:return error
-      spdlog::error("lookupTarget failed:{}", Error);
+      spdlog::error("loopTarget failed:{}", Error);
       return Unexpect(ErrCode::IllegalPath);
     }
 
@@ -4362,19 +4363,19 @@ void Compiler::compile(const AST::TypeSection &TypeSection) {
       for (size_t J = 0; J < ArgCount; ++J) {
         auto *ArgTy = FTy->getParamType(static_cast<uint32_t>(J + 1));
         llvm::Value *VPtr =
-            Builder.CreateConstInBoundsGEP1_64(RawArgs, J * kValSize);
+            Builder.CreateConstInBoundsGEP1_64(RawArgs, J * KValSize);
         llvm::Value *Ptr = Builder.CreateBitCast(VPtr, ArgTy->getPointerTo());
         Args.push_back(Builder.CreateLoad(Ptr));
       }
 
-      auto Ret = Builder.CreateCall(RawFunc, Args);
+      auto *Ret = Builder.CreateCall(RawFunc, Args);
       if (RTy->isVoidTy()) {
         // nothing to do
       } else if (RTy->isStructTy()) {
         auto Rets = unpackStruct(Builder, Ret);
         for (size_t J = 0; J < RetCount; ++J) {
           llvm::Value *VPtr =
-              Builder.CreateConstInBoundsGEP1_64(RawRets, J * kValSize);
+              Builder.CreateConstInBoundsGEP1_64(RawRets, J * KValSize);
           llvm::Value *Ptr =
               Builder.CreateBitCast(VPtr, Rets[J]->getType()->getPointerTo());
           Builder.CreateStore(Rets[J], Ptr);
@@ -4431,8 +4432,8 @@ void Compiler::compile(const AST::ImportSection &ImportSec) {
         Args = llvm::ConstantPointerNull::get(Context->Int8PtrTy);
       } else {
         auto *Alloca = Builder.CreateAlloca(
-            Context->Int8Ty, Builder.getInt64(ArgSize * kValSize));
-        Alloca->setAlignment(Align(kValSize));
+            Context->Int8Ty, Builder.getInt64(ArgSize * KValSize));
+        Alloca->setAlignment(Align(KValSize));
         Args = Alloca;
       }
 
@@ -4441,15 +4442,15 @@ void Compiler::compile(const AST::ImportSection &ImportSec) {
         Rets = llvm::ConstantPointerNull::get(Context->Int8PtrTy);
       } else {
         auto *Alloca = Builder.CreateAlloca(
-            Context->Int8Ty, Builder.getInt64(RetSize * kValSize));
-        Alloca->setAlignment(Align(kValSize));
+            Context->Int8Ty, Builder.getInt64(RetSize * KValSize));
+        Alloca->setAlignment(Align(KValSize));
         Rets = Alloca;
       }
 
       for (unsigned I = 0; I < ArgSize; ++I) {
         llvm::Argument *Arg = F->arg_begin() + 1 + I;
         llvm::Value *Ptr =
-            Builder.CreateConstInBoundsGEP1_64(Args, I * kValSize);
+            Builder.CreateConstInBoundsGEP1_64(Args, I * KValSize);
         Builder.CreateStore(
             Arg, Builder.CreateBitCast(Ptr, Arg->getType()->getPointerTo()));
       }
@@ -4475,7 +4476,7 @@ void Compiler::compile(const AST::ImportSection &ImportSec) {
         Ret.reserve(RetSize);
         for (unsigned I = 0; I < RetSize; ++I) {
           llvm::Value *VPtr =
-              Builder.CreateConstInBoundsGEP1_64(Rets, I * kValSize);
+              Builder.CreateConstInBoundsGEP1_64(Rets, I * KValSize);
           llvm::Value *Ptr = Builder.CreateBitCast(
               VPtr, RTy->getStructElementType(I)->getPointerTo());
           Ret.push_back(Builder.CreateLoad(Ptr));
