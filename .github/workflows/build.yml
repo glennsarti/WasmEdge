@@ -187,7 +187,7 @@ jobs:
         gci 'C:\Program Files\LLVM\bin' | ft
         gci 'C:\Program Files\LLVM\include' | ft
         gci 'C:\Program Files\LLVM\include\llvm-c' | ft
-        cmd /c dir "C:\Program Files\LLVM\*.cmake" /s
+        cmd /c dir "C:\*.cmake" /s
         $ENV:LLVM_DIR = 'C:\Program Files\LLVM'
         throw "!!!"
         cmake -Bbuild -DWASMEDGE_BUILD_TESTS=ON .
