@@ -181,8 +181,8 @@ jobs:
       shell: pwsh
       run: |
         Dir ENV:
-        set-location C:\
-        cmd /c dir LLVMConfig.cmake /s
+        Dir 'C:\Program Files'
+        Dir 'C:\Program Files\LLVM'
         choco list --lo
         # export LLVM_DIR="$(brew --prefix llvm)"
         cmake -Bbuild -DWASMEDGE_BUILD_TESTS=ON .
