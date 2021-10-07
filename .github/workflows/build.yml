@@ -186,7 +186,7 @@ jobs:
         gci 'C:\Program Files\LLVM' | ft
         gci 'C:\Program Files\LLVM\bin' | ft
         gci 'C:\Program Files\LLVM\include' | ft
-        gci 'C:\Program Files\LLVM\include\cmake' | ft
+        gci 'C:\Program Files\LLVM\include\llvm-c' | ft
         cmd /c dir "C:\Program Files\LLVM\LLVMConfig.cmake" /s
         $ENV:LLVM_DIR = 'C:\Program Files\LLVM'
         throw "!!!"
