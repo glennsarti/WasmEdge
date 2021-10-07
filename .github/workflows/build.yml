@@ -177,17 +177,24 @@ jobs:
       with:
         fetch-depth: 0
 
+
+ #C:\msys64\mingw32\lib\cmake\llvm
+ #C:\msys64\mingw64\lib\cmake\llvm
+ #LLVMConfig.cmake
+
     - name: Build WasmEdge
       shell: pwsh
       run: |
+        cmake --version
+        get-command cmake
         Dir ENV:
         # Dir 'C:\Program Files'
         # Dir 'C:\Program Files\LLVM'
-        gci 'C:\Program Files\LLVM' | ft
-        gci 'C:\Program Files\LLVM\bin' | ft
-        gci 'C:\Program Files\LLVM\include' | ft
-        gci 'C:\Program Files\LLVM\include\llvm-c' | ft
-        cmd /c dir "C:\*.cmake" /s
+        #gci 'C:\Program Files\LLVM' | ft
+        #gci 'C:\Program Files\LLVM\bin' | ft
+        #gci 'C:\Program Files\LLVM\include' | ft
+        #gci 'C:\Program Files\LLVM\include\llvm-c' | ft
+        cmd /c dir "C:\LLVMC*.cmake" /s
         $ENV:LLVM_DIR = 'C:\Program Files\LLVM'
         throw "!!!"
         cmake -Bbuild -DWASMEDGE_BUILD_TESTS=ON .
