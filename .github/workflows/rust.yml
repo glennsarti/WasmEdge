@@ -1,62 +1,62 @@
-name: rust
+# name: rust
 
-concurrency:
-  group: rust-${{ github.head_ref }}
-  cancel-in-progress: true
+# concurrency:
+#   group: rust-${{ github.head_ref }}
+#   cancel-in-progress: true
 
-on:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - 'doc/**'
-      - '**.md'
-  pull_request:
-    branches:
-      - master
-    paths-ignore:
-      - 'doc/**'
-      - '**.md'
+# on:
+#   push:
+#     branches:
+#       - master
+#     paths-ignore:
+#       - 'doc/**'
+#       - '**.md'
+#   pull_request:
+#     branches:
+#       - master
+#     paths-ignore:
+#       - 'doc/**'
+#       - '**.md'
 
-jobs:
-  rust:
-    runs-on: ubuntu-latest
-    container:
-      image: wasmedge/wasmedge:ubuntu-build-clang
+# jobs:
+#   rust:
+#     runs-on: ubuntu-latest
+#     container:
+#       image: wasmedge/wasmedge:ubuntu-build-clang
 
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
+#     steps:
+#     - uses: actions/checkout@v2
+#       with:
+#         fetch-depth: 0
 
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        components: rustfmt, clippy
+#     - name: Install Rust
+#       uses: actions-rs/toolchain@v1
+#       with:
+#         toolchain: stable
+#         components: rustfmt, clippy
 
-    - name: Rustfmt
-      run: |
-        cd bindings/rust/
-        cargo fmt --all -- --check
+#     - name: Rustfmt
+#       run: |
+#         cd bindings/rust/
+#         cargo fmt --all -- --check
 
-    - name: Build WasmEdge using clang with Debug mode
-      run: |
-        cmake -Bbuild -GNinja -DCMAKE_BUILD_TYPE=Debug -DWASMEDGE_BUILD_SHARED_LIB=ON .
-        cmake --build build
+#     - name: Build WasmEdge using clang with Debug mode
+#       run: |
+#         cmake -Bbuild -GNinja -DCMAKE_BUILD_TYPE=Debug -DWASMEDGE_BUILD_SHARED_LIB=ON .
+#         cmake --build build
 
-    - name: Clippy
-      run: |
-        cd bindings/rust/
-        export WASMEDGE_DIR="$(pwd)/../../"
-        export WASMEDGE_BUILD_DIR="$(pwd)/../../build"
-        cargo clippy --profile test --lib --examples -- -D warnings -D clippy::dbg_macro
+#     - name: Clippy
+#       run: |
+#         cd bindings/rust/
+#         export WASMEDGE_DIR="$(pwd)/../../"
+#         export WASMEDGE_BUILD_DIR="$(pwd)/../../build"
+#         cargo clippy --profile test --lib --examples -- -D warnings -D clippy::dbg_macro
 
-    - name: Test
-      run: |
-        cd bindings/rust/
-        export WASMEDGE_DIR="$(pwd)/../../"
-        export WASMEDGE_BUILD_DIR="$(pwd)/../../build"
-        export LD_LIBRARY_PATH="$(pwd)/../../build/lib/api"
-        cargo test --lib --examples --locked
-        cargo test --doc --locked
+#     - name: Test
+#       run: |
+#         cd bindings/rust/
+#         export WASMEDGE_DIR="$(pwd)/../../"
+#         export WASMEDGE_BUILD_DIR="$(pwd)/../../build"
+#         export LD_LIBRARY_PATH="$(pwd)/../../build/lib/api"
+#         cargo test --lib --examples --locked
+#         cargo test --doc --locked
